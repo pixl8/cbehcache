@@ -1,0 +1,22 @@
+{
+    "name":"EHCache Provider for Cachebox",
+    "author":"Pixl8 Group",
+    "version":"VERSION",
+    "location":"https://s3.eu-west-2.amazonaws.com/pixl8-public-packages/cbehcache/DOWNLOAD_LOCATION",
+    "slug":"cbehcache",
+    "type":"modules",
+    "homepage":"https://github.com/pixl8/cbehcache",
+    "documentation":"https://github.com/pixl8/cbehcache",
+    "repository":{
+        "type":"git",
+        "url":"https://github.com/pixl8/cbehcache"
+    },
+    "shortDescription":"A module to add an EHCache cache provider for CacheBox",
+    "contributors":[
+        "Dominic Watson <watson.dominic@gmail.com>"
+    ],
+    "ignore":[
+        "**/.*",
+        "build"
+    ]
+}
