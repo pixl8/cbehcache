@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.1
+
+* Build fixes
+
 ## v0.1.0
 
 Initial proof of concept with with:
