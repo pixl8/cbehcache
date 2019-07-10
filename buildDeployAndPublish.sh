@@ -38,7 +38,7 @@ if [[ $TRAVIS_TAG == v* ]] ; then
 	zip -rq $ZIP_FILE * -x jmimemagic.log || exit 1
 	mv $ZIP_FILE ../
 	cd ../
-	find ./*.zip -exec aws s3 cp {} s3://pixl8-public-packages/cbehcache/ --acl public-read \;
+	find ./*.zip -exec aws s3 cp {} s3://pixl8-public-packages/cbehcache/ --acl public-read \; || exit 1
 
     cd $BUILD_DIR;
     CWD="`pwd`";
