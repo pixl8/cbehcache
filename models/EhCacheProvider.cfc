@@ -132,13 +132,14 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 
 // HOUSE KEEPING
 	function getStats(){
-		return new cbehcache.models.EhCacheStats( this );
+		return new cbehcache.models.EhCacheStats( _getStatsService().getCacheStatistics( getName() ) );
 	}
 	function clearStatistics(){
-		// TODO
+		getStats().clearStatistics();
 	}
+
 	numeric function getSize(){
-		return getJcsRegion().getSize();
+		return getStats().getObjectCount();
 	}
 
 
@@ -213,8 +214,11 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 		if ( !StructKeyExists( application, "ehCacheManager" ) ) {
 			lock type="exclusive" name="ehCacheManagerLoad" timeout=5 {
 				if ( !StructKeyExists( application, "ehCacheManager" ) ) {
-					application.ehCacheManager = _setupManager();
-					application.ehCacheManager.init();
+					var manager = _obj( "org.ehcache.config.builders.CacheManagerBuilder" ).newCacheManagerBuilder().using( _getStatsService() ).build();
+
+					manager.init();
+
+					application.ehCacheManager = manager;
 				}
 			}
 		}
@@ -222,8 +226,16 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 		return application.ehCacheManager;
 	}
 
-	private any function _setupManager() {
-		return _obj( "org.ehcache.config.builders.CacheManagerBuilder" ).newCacheManagerBuilder().build();
+	private any function _getStatsService() {
+		if ( !StructKeyExists( application, "ehCacheStatsService" ) ) {
+			lock type="exclusive" name="ehCacheStatsServiceLoad" timeout=5 {
+				if ( !StructKeyExists( application, "ehCacheStatsService" ) ) {
+					application.ehCacheStatsService = _obj( "org.ehcache.impl.internal.statistics.DefaultStatisticsService" );
+				}
+			}
+		}
+
+		return application.ehCacheStatsService;
 	}
 
 	private any function _getConfigForEhCache() {
