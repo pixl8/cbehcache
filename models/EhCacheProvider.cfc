@@ -11,11 +11,13 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 // END: Coldbox templateCache gumf
 
 	variables.DEFAULTS = {
-		  objectDefaultTimeout = 60
-		, maxObjects           = 1000
-		, keyClass             = "java.lang.String"
-		, valueClass           = "java.lang.Object"
-		, memoryType           = "heap"
+		  objectDefaultTimeout           = 60
+		, objectDefaultLastAccessTimeout = 0
+		, useLastAccessTimeouts          = false
+		, maxObjects                     = 1000
+		, keyClass                       = "java.lang.String"
+		, valueClass                     = "java.lang.Object"
+		, memoryType                     = "heap"
 	};
 
 
@@ -254,6 +256,16 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 
 	private any function _getExpiryPolicyConfig() {
 		var cfmlConfig = getConfiguration();
+
+		if ( !cfmlConfig.objectDefaultLastAccessTimeout + cfmlConfig.objectDefaultTimeout ) {
+			return _getExpiryPolicyBuilder().noExpiration();
+		}
+
+		if ( cfmlConfig.useLastAccessTimeouts ) {
+			var timeout = cfmlConfig.objectDefaultLastAccessTimeout ? cfmlConfig.objectDefaultLastAccessTimeout : cfmlConfig.objectDefaultTimeout;
+
+			return _getExpiryPolicyBuilder().timeToIdleExpiration( _obj( "java.time.Duration" ).ofMinutes( cfmlConfig.objectDefaultTimeout ) );
+		}
 
 		return _getExpiryPolicyBuilder().timeToLiveExpiration( _obj( "java.time.Duration" ).ofMinutes( cfmlConfig.objectDefaultTimeout ) );
 	}
