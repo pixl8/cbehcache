@@ -62,6 +62,10 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 				variables.configuration[ key ] = variables.DEFAULTS[ key ];
 			}
 		}
+
+		if ( !variables.configuration.useLastAccessTimeouts ) {
+			variables.configuration.objectDefaultLastAccessTimeout = 0;
+		}
 	}
 
 	function registerCache() {
