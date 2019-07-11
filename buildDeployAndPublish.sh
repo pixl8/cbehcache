@@ -7,12 +7,7 @@ if [[ $TRAVIS_TAG == v* ]] ; then
 	ZIP_FILE=$BRANCH_FOLDER.zip
 	BUILD_DIR=build/
 	PADDED_BUILD_NUMBER=`printf %05d $TRAVIS_BUILD_NUMBER`
-
-	if [[ $GIT_BRANCH == v* ]] ; then
-		VERSION_NUMBER="${GIT_BRANCH//v}.$PADDED_BUILD_NUMBER"
-	else
-		VERSION_NUMBER="${GIT_BRANCH//release-}.$PADDED_BUILD_NUMBER-SNAPSHOT"
-	fi
+	VERSION_NUMBER="${GIT_BRANCH//v}+$PADDED_BUILD_NUMBER"
 
 	echo "Building EHCache Cachebox Provider"
 	echo "=================================="
