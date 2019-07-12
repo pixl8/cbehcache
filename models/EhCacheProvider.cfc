@@ -11,11 +11,15 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 // END: Coldbox templateCache gumf
 
 	variables.DEFAULTS = {
-		  objectDefaultTimeout = 60
-		, maxObjects           = 1000
-		, keyClass             = "java.lang.String"
-		, valueClass           = "java.lang.Object"
-		, memoryType           = "heap"
+		  objectDefaultTimeout           = 60
+		, objectDefaultLastAccessTimeout = 0
+		, useLastAccessTimeouts          = false
+		, maxObjects                     = 1000
+		, maxSizeInMb                    = 0
+		, keyClass                       = "java.lang.String"
+		, valueClass                     = "java.lang.Object"
+		, storage                        = "heap" // heap / offheap / disk currently supported
+		, persistent                     = false // for disk only
 	};
 
 
@@ -45,7 +49,10 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 		if ( StructKeyExists( application, "ehCacheManager" ) ) {
 			lock type="exclusive" name="ehCacheManagerShutdown" timeout=5 {
 				if ( StructKeyExists( application, "ehCacheManager" ) ) {
-					application.ehCacheManager.close();
+					try {
+						application.ehCacheManager.close();
+					} catch( "java.lang.IllegalStateException" e ) {}
+
 					application.delete( "ehCacheManager" );
 				}
 			}
@@ -53,11 +60,21 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 	}
 
 	function validateConfiguration() {
-		StructAppend( variables.configuration, variables.DEFAULTS );
+		StructAppend( variables.configuration, variables.DEFAULTS, false );
 
 		for( var key in variables.DEFAULTS ){
 			if( NOT len( variables.configuration[ key ] ) ){
 				variables.configuration[ key ] = variables.DEFAULTS[ key ];
+			}
+		}
+
+		if ( !variables.configuration.useLastAccessTimeouts ) {
+			variables.configuration.objectDefaultLastAccessTimeout = 0;
+		}
+
+		if ( ArrayFind( [ "nonheap", "disk" ], variables.configuration.storage ) ) {
+			if ( variables.configuration.valueClass == "java.lang.Object" ) {
+				throw( type="ehcacheprovider.bad.config", message="The [#getName()#] cache is incorrectly configured. When using [#variables.configuration.storage#] storage, you must specify a serializable value class, e.g. 'java.lang.String', or 'lucee.runtime.type.Struct'. See cbehcache README for documentation on how to set the valueClass for your cache." );
 			}
 		}
 	}
@@ -72,7 +89,11 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 
 // CORE CACHE METHODS
 	function get( required objectKey ){
-		return variables.cache.get( arguments.objectKey );
+		try {
+			return variables.cache.get( arguments.objectKey );
+		} catch( "java.lang.IllegalStateException" e ) {
+			// cache unavailable, probably due to shutdown
+		}
 	}
 
 	any function set(
@@ -82,8 +103,11 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 		,          any    lastAccessTimeout = 0  // ignored
 		,          struct extra             = {} // ignored
 	){
-		variables.cache.put( arguments.objectKey, arguments.object );
-
+		try {
+			variables.cache.put( arguments.objectKey, arguments.object );
+		} catch( "java.lang.IllegalStateException" e ) {
+			// cache unavailable, probably due to shutdown
+		}
 		return this;
 	}
 
@@ -115,28 +139,41 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 	}
 
 	boolean function lookup( required objectKey ){
-		return variables.cache.containsKey( arguments.objectKey );
+		try {
+			return variables.cache.containsKey( arguments.objectKey );
+		} catch( "java.lang.IllegalStateException" e ) {
+			// cache unavailable, probably due to shutdown
+		}
 	}
 
 	function clearAll(){
-		variables.cache.clear();
+		try {
+			variables.cache.clear();
+		} catch( "java.lang.IllegalStateException" e ) {
+			// cache unavailable, probably due to shutdown
+		}
 		return this;
 	}
 
 	boolean function clear( required objectKey ){
-		variables.cache.remove( arguments.objectKey );
+		try {
+			variables.cache.remove( arguments.objectKey );
+		} catch( "java.lang.IllegalStateException" e ) {
+			// cache unavailable, probably due to shutdown
+		}
 		return true;
 	}
 
 // HOUSE KEEPING
 	function getStats(){
-		return new cbehcache.models.EhCacheStats( this );
+		return new cbehcache.models.EhCacheStats( _getStatsService().getCacheStatistics( getName() ) );
 	}
 	function clearStatistics(){
-		// TODO
+		getStats().clearStatistics();
 	}
+
 	numeric function getSize(){
-		return getJcsRegion().getSize();
+		return getStats().getObjectCount();
 	}
 
 
@@ -211,8 +248,16 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 		if ( !StructKeyExists( application, "ehCacheManager" ) ) {
 			lock type="exclusive" name="ehCacheManagerLoad" timeout=5 {
 				if ( !StructKeyExists( application, "ehCacheManager" ) ) {
-					application.ehCacheManager = _setupManager();
-					application.ehCacheManager.init();
+					var storage = _obj( "java.io.File" ).init( _getFileStorageDirectory() );
+					var builder = _obj( "org.ehcache.config.builders.CacheManagerBuilder" );
+					var manager = builder.newCacheManagerBuilder()
+					                .using( _getStatsService() )
+					                .with( builder.persistence( storage ) )
+					                .build();
+
+					manager.init();
+
+					application.ehCacheManager = manager;
 				}
 			}
 		}
@@ -220,8 +265,24 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 		return application.ehCacheManager;
 	}
 
-	private any function _setupManager() {
-		return _obj( "org.ehcache.config.builders.CacheManagerBuilder" ).newCacheManagerBuilder().build();
+	private any function _getStatsService() {
+		if ( !StructKeyExists( application, "ehCacheStatsService" ) ) {
+			lock type="exclusive" name="ehCacheStatsServiceLoad" timeout=5 {
+				if ( !StructKeyExists( application, "ehCacheStatsService" ) ) {
+					application.ehCacheStatsService = _obj( "org.ehcache.impl.internal.statistics.DefaultStatisticsService" );
+				}
+			}
+		}
+
+		return application.ehCacheStatsService;
+	}
+
+	private string function _getFileStorageDirectory() {
+		var dir = getTempDirectory() & "/ehcache";
+
+		DirectoryCreate( dir, true, true );
+
+		return dir;
 	}
 
 	private any function _getConfigForEhCache() {
@@ -249,13 +310,47 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 	private any function _getResourcePoolConfig() {
 		var cfmlConfig = getConfiguration();
 
-		return _getResourcePoolBuilder().heap( JavaCast( "long", cfmlConfig.maxObjects ) ).build();
+		switch( cfmlConfig.storage ) {
+			case "offheap":
+				return _configureOffHeapStorage( cfmlConfig.maxSizeInMb );
+
+			case "disk":
+				return _configureDiskStorage( cfmlConfig.maxSizeInMb, cfmlConfig.persistent );
+		}
+
+		// heap default
+		return _configureHeapStorage( cfmlConfig.maxObjects, cfmlConfig.maxSizeInMb );
+	}
+
+	private any function _configureHeapStorage( maxObjects, maxSizeInMb ) {
+		if ( arguments.maxObjects ) {
+			return _getResourcePoolBuilder().heap( JavaCast( "long", arguments.maxObjects ) ).build();
+		}
+
+		return _getResourcePoolBuilder().heap( JavaCast( "long", arguments.maxSizeInMb ), _obj( "org.ehcache.config.units.MemoryUnit" ).MB ).build();
+	}
+
+	private any function _configureOffHeapStorage( maxSizeInMb ) {
+		return _getResourcePoolBuilder().offheap( JavaCast( "long", arguments.maxSizeInMb ), _obj( "org.ehcache.config.units.MemoryUnit" ).MB ).build();
+	}
+
+	private any function _configureDiskStorage( maxSizeInMb, persistent ) {
+		return _getResourcePoolBuilder().newResourcePoolsBuilder().disk( JavaCast( "long", arguments.maxSizeInMb ), _obj( "org.ehcache.config.units.MemoryUnit" ).MB, arguments.persistent ).build();
 	}
 
 	private any function _getExpiryPolicyConfig() {
 		var cfmlConfig = getConfiguration();
 
+		if ( !cfmlConfig.objectDefaultLastAccessTimeout + cfmlConfig.objectDefaultTimeout ) {
+			return _getExpiryPolicyBuilder().noExpiration();
+		}
+
+		if ( cfmlConfig.useLastAccessTimeouts ) {
+			var timeout = cfmlConfig.objectDefaultLastAccessTimeout ? cfmlConfig.objectDefaultLastAccessTimeout : cfmlConfig.objectDefaultTimeout;
+
+			return _getExpiryPolicyBuilder().timeToIdleExpiration( _obj( "java.time.Duration" ).ofMinutes( cfmlConfig.objectDefaultTimeout ) );
+		}
+
 		return _getExpiryPolicyBuilder().timeToLiveExpiration( _obj( "java.time.Duration" ).ofMinutes( cfmlConfig.objectDefaultTimeout ) );
 	}
-
 }

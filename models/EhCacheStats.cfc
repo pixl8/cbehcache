@@ -1,7 +1,7 @@
 component implements="coldbox.system.cache.util.ICacheStats" {
 
-	public any function init( required any ehProvider ) {
-		_setEhCacheProvider( arguments.ehProvider );
+	public any function init( required any statsService ) {
+		_setStatsService( arguments.statsService );
 
 		return this;
 	}
@@ -9,50 +9,56 @@ component implements="coldbox.system.cache.util.ICacheStats" {
 	public struct function getMemento() {
 		return {
 			  lastReapDateTime   = ""
-			, hits               = 0
-			, misses             = 0
-			, evictionCount      = 0
+			, hits               = getHits()
+			, misses             = getMisses()
+			, evictionCount      = getEvictionCount()
 			, garbageCollections = 0
 		};
 	}
 
 	numeric function getCachePerformanceRatio() {
-		var hits   = getHits();
-		var misses = getMisses();
-		var total  = hits + misses;
-
-		return total ? ( ( hits / total ) * 100 ) : 0;
+		return _getStatsService().getCacheHitPercentage();
 	}
 
 	numeric function getObjectCount() {
-		return _getEhCacheProvider().getSize();
+		var allStats = _getStatsService().getKnownStatistics();
+		var statKeys = StructKeyArray( allStats );
+		var total    = 0;
+
+		for( var key in statKeys ) {
+			if ( ReFindNoCase( ":MappingCount$", key ) ) {
+				total += Val( allStats[ key ].value() );
+			}
+		}
+
+		return total;
 	}
 
 	numeric function getGarbageCollections() {
 		return 0;
 	}
 	numeric function getEvictionCount() {
-		return 0;
+		return _getStatsService().getCacheEvictions();
 	}
 	numeric function getHits() {
-		return 0;
+		return _getStatsService().getCacheHits();
 	}
 	numeric function getMisses(){
-		return 0;
+		return _getStatsService().getCacheMisses();
 	}
 	function getLastReapDatetime() {
 		return "";
 	}
 
 	function clearStatistics() {
-		// not implemented
+		_getStatsService().clear();
 	}
 
 // getters and setters
-	private any function _getEhCacheProvider() {
-	    return _jcsProvider;
+	private any function _getStatsService() {
+	    return _statsService;
 	}
-	private void function _setEhCacheProvider( required any jcsProvider ) {
-	    _jcsProvider = arguments.jcsProvider;
+	private void function _setStatsService( required any statsService ) {
+	    _statsService = arguments.statsService;
 	}
 }
