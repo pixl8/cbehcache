@@ -1,12 +1,13 @@
-# EHCache Cachebox Provider
+# EHCache Cachebox Provider with JGroups clustering
 
-This module makes EHCache 3.7 available as a Cachebox provider. The project supports the following features:
+This module makes EHCache 3.7 available as a Cachebox provider, with clustering support using [jGroups](https://github.com/pixl8/cbjgroups). The project supports the following features:
 
 * Configuration of heap, offheap or disk storage
 * Configuration of cache timeouts
 * Configuration of resource limits
+* Configuration of a jGroups cluster to replicate caches
 
-No tiered resources or Terracota clustering are currently available. These could come in a later resource pending demand.
+No tiered resources or _Terracota clustering_ are currently available. These could come in a later resource pending demand.
 
 ## Get involved
 
@@ -34,6 +35,10 @@ caches.mycache = {
 		, maxSizeInMb                    = 0
 		, keyClass                       = "java.lang.String"
 		, valueClass                     = "java.lang.Object"
+		, cluster                        = false
+		, clusterName                    = "cbehcache"
+		, propagateDeletes               = true
+		, propagatePuts                  = false
 	}
 }
 ```
@@ -63,4 +68,17 @@ For `nonheap` and `disk` storage, only `maxSizeInMb` is possible.
 #### Key and Value classes
 
 For serialization of caches (`nonheap` and `disk` storages), the cache requires that you define the class used for both keys and values in the cache. If you know that you will always be storing _strings_ in the cache, set the `valueClass` to `java.lang.String`.
+
+#### Clustering
+
+The minimal configuration required is to set `clustering=true` to enable clustering. This will:
+
+* propagate cache deletes across the system 
+* setup a cluster named `cbehcache` with the default `jgroups` cluster settings of automatically detecting peers using UDP multicast discovery
+
+See the [cbjgroups](https://github.com/pixl8/cbjgroups) project documentation for full cluster configuration details. You can either configure a `cbehcache` cluster, or provide your own cluster IDs with their own configuration.
+
+Set `propagatePuts` to `true` to have any additions to the cache on any node to be replicated across all nodes (default is `false`).
+
+
 

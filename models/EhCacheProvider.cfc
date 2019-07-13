@@ -1,6 +1,7 @@
 component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="coldbox.system.cache.providers.ICacheProvider"  accessors=true serializable=false {
 
 	property name="cache";
+	property name="jGroupsCluster";
 
 // BEGIN: Coldbox templateCache gumf
 	property name="elementCleaner";
@@ -20,6 +21,10 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 		, valueClass                     = "java.lang.Object"
 		, storage                        = "heap" // heap / offheap / disk currently supported
 		, persistent                     = false // for disk only
+		, cluster                        = false
+		, clusterName                    = "cbehcache"
+		, propagateDeletes               = true
+		, propagatePuts                  = false
 	};
 
 
@@ -77,6 +82,17 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 				throw( type="ehcacheprovider.bad.config", message="The [#getName()#] cache is incorrectly configured. When using [#variables.configuration.storage#] storage, you must specify a serializable value class, e.g. 'java.lang.String', or 'lucee.runtime.type.Struct'. See cbehcache README for documentation on how to set the valueClass for your cache." );
 			}
 		}
+
+		if ( variables.configuration.cluster ) {
+			if ( !variables.configuration.propagateDeletes && !variables.configuration.propagatePuts ) {
+				variables.configuration.cluster = false;
+			} else if ( !Len( Trim( variables.configuration.clusterName ) ) ) {
+				throw( type="ehcacheprovider.bad.config", message="The [#getName()#] cache is incorrectly configured. When enabling clustering, clusterName cannot be empty." );
+			}
+		} else {
+			variables.configuration.propagateDeletes = false;
+			variables.configuration.propagatePuts    = false;
+		}
 	}
 
 	function registerCache() {
@@ -84,6 +100,20 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 		var cache = mngr.createCache( getName(), _getConfigForEhCache() );
 
 		setCache( cache );
+	}
+
+	function getJGroupsCluster() {
+		return variables.jgroupsCluster ?: setupCluster();
+	}
+
+	function setupCluster() {
+		var conf       = getConfiguration();
+		var wirebox    = getColdbox().getWirebox();
+		var theCluster = wirebox.getInstance( dsl="cbjgroups:cluster:" & conf.clusterName );
+
+		setJGroupsCluster( theCluster );
+
+		return theCluster;
 	}
 
 
@@ -105,6 +135,12 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 	){
 		try {
 			variables.cache.put( arguments.objectKey, arguments.object );
+			if ( variables.configuration.propagatePuts && _isTrue( arguments.propagate ?: true ) ) {
+				_runClusterEvent( "set", {
+					  objectKey = arguments.objectKey
+					, object    = arguments.object
+				} );
+			}
 		} catch( "java.lang.IllegalStateException" e ) {
 			// cache unavailable, probably due to shutdown
 		}
@@ -149,15 +185,24 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 	function clearAll(){
 		try {
 			variables.cache.clear();
+
+			if ( variables.configuration.propagateDeletes && _isTrue( arguments.propagate ?: true ) ) {
+				_runClusterEvent( "clearall" );
+			}
 		} catch( "java.lang.IllegalStateException" e ) {
 			// cache unavailable, probably due to shutdown
 		}
 		return this;
 	}
 
-	boolean function clear( required objectKey ){
+	boolean function clear(
+		  required any objectKey
+	){
 		try {
 			variables.cache.remove( arguments.objectKey );
+			if ( variables.configuration.propagateDeletes && _isTrue( arguments.propagate ?: true ) ) {
+				_runClusterEvent( "clear", { objectKey=arguments.objectKey } );
+			}
 		} catch( "java.lang.IllegalStateException" e ) {
 			// cache unavailable, probably due to shutdown
 		}
@@ -174,6 +219,14 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 
 	numeric function getSize(){
 		return getStats().getObjectCount();
+	}
+
+	function setColdbox( required any coldbox ) {
+		variables.coldbox = arguments.coldbox;
+	}
+
+	function getColdbox() {
+		return variables.coldbox;
 	}
 
 
@@ -352,5 +405,18 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 		}
 
 		return _getExpiryPolicyBuilder().timeToLiveExpiration( _obj( "java.time.Duration" ).ofMinutes( cfmlConfig.objectDefaultTimeout ) );
+	}
+
+	private boolean function _isTrue( required any value ) {
+		return IsBoolean( arguments.value ) && arguments.value;
+	}
+
+	private void function _runClusterEvent( required string event, struct args={} ) {
+		args.cacheName = getName();
+
+		getJGroupsCluster().runEvent(
+			  event          = "cbehcache:ehCacheClusterListener.#arguments.event#"
+			, eventArguments = args
+		);
 	}
 }

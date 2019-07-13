@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.0
+
+* Added support for clustering using jGroups ([cbjgroups](https://github.com/pixl8/cbjgroups))
+
 ## v1.0.1
 
 * Added support for `nonheap` and `disk` storage
