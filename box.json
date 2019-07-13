@@ -18,5 +18,11 @@
     "ignore":[
         "**/.*",
         "build"
-    ]
+    ],
+    "dependencies":{
+        "cbjgroups":"^0.1.2+00008"
+    },
+    "installPaths":{
+        "cbjgroups":"modules/cbjgroups/"
+    }
 }
