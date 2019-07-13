@@ -1,13 +1,18 @@
 # EHCache Cachebox Provider with JGroups clustering
 
-This module makes EHCache 3.7 available as a Cachebox provider, with clustering support using [jGroups](https://github.com/pixl8/cbjgroups). The project supports the following features:
+[![On Forgebox](https://forgebox.io/api/v1/entry/cbehcache/badges/version)](https://forgebox.io/view/cbehcache)
+
+[![Build Status](https://travis-ci.org/pixl8/cbehcache.svg?branch=stable)](https://travis-ci.org/pixl8/cbehcache)
+
+
+This module makes EHCache 3.7 available as a Cachebox provider, with clustering support using [cbjgroups](https://forgebox.io/view/cbjgroups). The project supports the following features:
 
 * Configuration of heap, offheap or disk storage
 * Configuration of cache timeouts
 * Configuration of resource limits
 * Configuration of a jGroups cluster to replicate caches
 
-No tiered resources or _Terracota clustering_ are currently available. These could come in a later resource pending demand.
+No tiered resources or _Terracota_ clustering are currently available. These could come in a later release pending demand.
 
 ## Get involved
 

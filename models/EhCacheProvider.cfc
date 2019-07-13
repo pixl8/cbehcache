@@ -301,6 +301,8 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 		if ( !StructKeyExists( application, "ehCacheManager" ) ) {
 			lock type="exclusive" name="ehCacheManagerLoad" timeout=5 {
 				if ( !StructKeyExists( application, "ehCacheManager" ) ) {
+					_closeAbandonedManagers(); // there can be only one
+
 					var storage = _obj( "java.io.File" ).init( _getFileStorageDirectory() );
 					var builder = _obj( "org.ehcache.config.builders.CacheManagerBuilder" );
 					var manager = builder.newCacheManagerBuilder()
@@ -309,6 +311,8 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 					                .build();
 
 					manager.init();
+
+					_storeManagerInServerScopeToAvoidBadShutdownIssues( manager );
 
 					application.ehCacheManager = manager;
 				}
@@ -331,7 +335,7 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 	}
 
 	private string function _getFileStorageDirectory() {
-		var dir = getTempDirectory() & "/ehcache";
+		var dir = getTempDirectory() & "/ehcache/" & _getAppName();
 
 		DirectoryCreate( dir, true, true );
 
@@ -418,5 +422,34 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 			  event          = "cbehcache:ehCacheClusterListener.#arguments.event#"
 			, eventArguments = args
 		);
+	}
+
+	private string function _getAppName() {
+		var appMeta = getApplicationMetadata();
+
+		return appMeta.name ?: Hash( ExpandPath( "/" ) );
+	}
+
+	private void function _storeManagerInServerScopeToAvoidBadShutdownIssues( required any manager ) {
+		var appName = _getAppName();
+		server.ehCacheManagers = server.ehCacheManagers ?: {};
+		server.ehCacheManagers[ appName ] = server.ehCacheManagers[ appName ] ?: [];
+
+		ArrayAppend( server.ehCacheManagers[ appName ], arguments.manager );
+	}
+
+	private void function _closeAbandonedManagers() {
+		var appName  = _getAppName();
+		var managers = server.ehCacheManagers[ appName ] ?: [];
+
+		for( var i=ArrayLen( managers ); i>0; i-- ) {
+			try {
+				managers[ i ].close();
+			} catch( "java.lang.IllegalStateException" e ) {
+				// ignore, already closed
+			}
+
+			ArrayDeleteAt( managers, i );
+		}
 	}
 }
