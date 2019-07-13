@@ -1,6 +1,7 @@
 component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="coldbox.system.cache.providers.ICacheProvider"  accessors=true serializable=false {
 
 	property name="cache";
+	property name="jGroupsCluster";
 
 // BEGIN: Coldbox templateCache gumf
 	property name="elementCleaner";
@@ -20,6 +21,10 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 		, valueClass                     = "java.lang.Object"
 		, storage                        = "heap" // heap / offheap / disk currently supported
 		, persistent                     = false // for disk only
+		, cluster                        = false
+		, clusterName                    = "cbehcache"
+		, propagateDeletes               = true
+		, propagatePuts                  = false
 	};
 
 
@@ -77,6 +82,17 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 				throw( type="ehcacheprovider.bad.config", message="The [#getName()#] cache is incorrectly configured. When using [#variables.configuration.storage#] storage, you must specify a serializable value class, e.g. 'java.lang.String', or 'lucee.runtime.type.Struct'. See cbehcache README for documentation on how to set the valueClass for your cache." );
 			}
 		}
+
+		if ( variables.configuration.cluster ) {
+			if ( !variables.configuration.propagateDeletes && !variables.configuration.propagatePuts ) {
+				variables.configuration.cluster = false;
+			} else if ( !Len( Trim( variables.configuration.clusterName ) ) ) {
+				throw( type="ehcacheprovider.bad.config", message="The [#getName()#] cache is incorrectly configured. When enabling clustering, clusterName cannot be empty." );
+			}
+		} else {
+			variables.configuration.propagateDeletes = false;
+			variables.configuration.propagatePuts    = false;
+		}
 	}
 
 	function registerCache() {
@@ -84,6 +100,20 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 		var cache = mngr.createCache( getName(), _getConfigForEhCache() );
 
 		setCache( cache );
+	}
+
+	function getJGroupsCluster() {
+		return variables.jgroupsCluster ?: setupCluster();
+	}
+
+	function setupCluster() {
+		var conf       = getConfiguration();
+		var wirebox    = getColdbox().getWirebox();
+		var theCluster = wirebox.getInstance( dsl="cbjgroups:cluster:" & conf.clusterName );
+
+		setJGroupsCluster( theCluster );
+
+		return theCluster;
 	}
 
 
@@ -105,6 +135,12 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 	){
 		try {
 			variables.cache.put( arguments.objectKey, arguments.object );
+			if ( variables.configuration.propagatePuts && _isTrue( arguments.propagate ?: true ) ) {
+				_runClusterEvent( "set", {
+					  objectKey = arguments.objectKey
+					, object    = arguments.object
+				} );
+			}
 		} catch( "java.lang.IllegalStateException" e ) {
 			// cache unavailable, probably due to shutdown
 		}
@@ -149,15 +185,24 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 	function clearAll(){
 		try {
 			variables.cache.clear();
+
+			if ( variables.configuration.propagateDeletes && _isTrue( arguments.propagate ?: true ) ) {
+				_runClusterEvent( "clearall" );
+			}
 		} catch( "java.lang.IllegalStateException" e ) {
 			// cache unavailable, probably due to shutdown
 		}
 		return this;
 	}
 
-	boolean function clear( required objectKey ){
+	boolean function clear(
+		  required any objectKey
+	){
 		try {
 			variables.cache.remove( arguments.objectKey );
+			if ( variables.configuration.propagateDeletes && _isTrue( arguments.propagate ?: true ) ) {
+				_runClusterEvent( "clear", { objectKey=arguments.objectKey } );
+			}
 		} catch( "java.lang.IllegalStateException" e ) {
 			// cache unavailable, probably due to shutdown
 		}
@@ -174,6 +219,14 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 
 	numeric function getSize(){
 		return getStats().getObjectCount();
+	}
+
+	function setColdbox( required any coldbox ) {
+		variables.coldbox = arguments.coldbox;
+	}
+
+	function getColdbox() {
+		return variables.coldbox;
 	}
 
 
@@ -248,6 +301,8 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 		if ( !StructKeyExists( application, "ehCacheManager" ) ) {
 			lock type="exclusive" name="ehCacheManagerLoad" timeout=5 {
 				if ( !StructKeyExists( application, "ehCacheManager" ) ) {
+					_closeAbandonedManagers(); // there can be only one
+
 					var storage = _obj( "java.io.File" ).init( _getFileStorageDirectory() );
 					var builder = _obj( "org.ehcache.config.builders.CacheManagerBuilder" );
 					var manager = builder.newCacheManagerBuilder()
@@ -256,6 +311,8 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 					                .build();
 
 					manager.init();
+
+					_storeManagerInServerScopeToAvoidBadShutdownIssues( manager );
 
 					application.ehCacheManager = manager;
 				}
@@ -278,7 +335,7 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 	}
 
 	private string function _getFileStorageDirectory() {
-		var dir = getTempDirectory() & "/ehcache";
+		var dir = getTempDirectory() & "/ehcache/" & _getAppName();
 
 		DirectoryCreate( dir, true, true );
 
@@ -352,5 +409,47 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 		}
 
 		return _getExpiryPolicyBuilder().timeToLiveExpiration( _obj( "java.time.Duration" ).ofMinutes( cfmlConfig.objectDefaultTimeout ) );
+	}
+
+	private boolean function _isTrue( required any value ) {
+		return IsBoolean( arguments.value ) && arguments.value;
+	}
+
+	private void function _runClusterEvent( required string event, struct args={} ) {
+		args.cacheName = getName();
+
+		getJGroupsCluster().runEvent(
+			  event          = "cbehcache:ehCacheClusterListener.#arguments.event#"
+			, eventArguments = args
+		);
+	}
+
+	private string function _getAppName() {
+		var appMeta = getApplicationMetadata();
+
+		return appMeta.name ?: Hash( ExpandPath( "/" ) );
+	}
+
+	private void function _storeManagerInServerScopeToAvoidBadShutdownIssues( required any manager ) {
+		var appName = _getAppName();
+		server.ehCacheManagers = server.ehCacheManagers ?: {};
+		server.ehCacheManagers[ appName ] = server.ehCacheManagers[ appName ] ?: [];
+
+		ArrayAppend( server.ehCacheManagers[ appName ], arguments.manager );
+	}
+
+	private void function _closeAbandonedManagers() {
+		var appName  = _getAppName();
+		var managers = server.ehCacheManagers[ appName ] ?: [];
+
+		for( var i=ArrayLen( managers ); i>0; i-- ) {
+			try {
+				managers[ i ].close();
+			} catch( "java.lang.IllegalStateException" e ) {
+				// ignore, already closed
+			}
+
+			ArrayDeleteAt( managers, i );
+		}
 	}
 }
