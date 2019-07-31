@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.1
+
+* Fix for hardcoded path accidentally left in while local testing
+
 ## v1.1.0
 
 * Added support for clustering using jGroups ([cbjgroups](https://github.com/pixl8/cbjgroups))
