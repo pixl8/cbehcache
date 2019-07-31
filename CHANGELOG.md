@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.2
+
+* Fix for clear by key snippet not being possible (just have to clear all for now!)
+
 ## v1.1.1
 
 * Fix for hardcoded path accidentally left in while local testing

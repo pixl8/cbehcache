@@ -284,6 +284,10 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 		);
 	}
 
+	function clearByKeySnippet( required keySnippet, boolean regex=false, boolean async=false ){
+		clearAll();
+	}
+
 // UTILITIES
 	private any function _obj( required string className ) {
 		return CreateObject( "java", arguments.className, _getLib() )
