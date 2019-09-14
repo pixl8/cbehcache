@@ -72,7 +72,7 @@ For `nonheap` and `disk` storage, only `maxSizeInMb` is possible.
 
 #### Key and Value classes
 
-For serialization of caches (`nonheap` and `disk` storages), the cache requires that you define the class used for both keys and values in the cache. If you know that you will always be storing _strings_ in the cache, set the `valueClass` to `java.lang.String`.
+For serialization of caches (`nonheap` and `disk` storages), the cache requires that you define the class used for both keys and values in the cache. If you know that you will always be storing _strings_ in the cache, set the `valueClass` to `java.lang.String`. For CFML types, you can use `struct`, `array` or `query` for the corresponding types.
 
 #### Clustering
 

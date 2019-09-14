@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.4
+
+* [#2](https://github.com/pixl8/cbehcache/issues/2) Allow the use of CFML struct, query and array types for the 'ValueClass' for non-heap storage.
+
 ## v1.1.3
 
 * [#1](https://github.com/pixl8/cbehcache/issues/1) Improve performance of cluster cache operations that potentially fail when the cache does not (yet) exist in the listening cluster node. Ignore missing caches and do not go to wirebox each time to fetch the cache.
