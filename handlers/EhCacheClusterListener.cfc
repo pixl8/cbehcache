@@ -5,25 +5,33 @@
  */
 component {
 
-	private void function set( event, rc, prc, cacheName="", objectKey="", object="" ) {
-		var cache = getModel( dsl="cachebox:#arguments.cacheName#" );
+	property name="cachebox" inject="cachebox";
 
-		cache.set(
-			  propagate = false
-			, objectKey = arguments.objectKey
-			, object    = arguments.object
-		);
+	private void function set( event, rc, prc, cacheName="", objectKey="", object="" ) {
+		if ( cachebox.cacheExists( arguments.cacheName ) ) {
+			var cache = cachebox.getCache( arguments.cacheName );
+
+			cache.set(
+				  propagate = false
+				, objectKey = arguments.objectKey
+				, object    = arguments.object
+			);
+		}
 
 	}
 
 	private void function clearall( event, rc, prc, cacheName="" ) {
-		var cache = getModel( dsl="cachebox:#arguments.cacheName#" );
+		if ( cachebox.cacheExists( arguments.cacheName ) ) {
+			var cache = cachebox.getCache( arguments.cacheName );
 
-		cache.clearall( propagate=false );
+			systemoutput( "clearall :)" )
+
+			cache.clearall( propagate=false );
+		}
 	}
 
 	private void function clear( event, rc, prc, cacheName="", objectKey="" ) {
-		var cache = getModel( dsl="cachebox:#arguments.cacheName#" );
+		var cache = cachebox.getCache( arguments.cacheName );
 
 		cache.clear(
 			  propagate = false
