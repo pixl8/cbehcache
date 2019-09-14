@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.3
+
+* [#1](https://github.com/pixl8/cbehcache/issues/1) Improve performance of cluster cache operations that potentially fail when the cache does not (yet) exist in the listening cluster node. Ignore missing caches and do not go to wirebox each time to fetch the cache.
+
 ## v1.1.2
 
 * Fix for clear by key snippet not being possible (just have to clear all for now!)
