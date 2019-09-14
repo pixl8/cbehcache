@@ -79,7 +79,7 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 
 		if ( ArrayFind( [ "nonheap", "disk" ], variables.configuration.storage ) ) {
 			if ( variables.configuration.valueClass == "java.lang.Object" ) {
-				throw( type="ehcacheprovider.bad.config", message="The [#getName()#] cache is incorrectly configured. When using [#variables.configuration.storage#] storage, you must specify a serializable value class, e.g. 'java.lang.String', or 'lucee.runtime.type.Struct'. See cbehcache README for documentation on how to set the valueClass for your cache." );
+				throw( type="ehcacheprovider.bad.config", message="The [#getName()#] cache is incorrectly configured. When using [#variables.configuration.storage#] storage, you must specify a serializable value class, e.g. 'java.lang.String', or 'struct', 'array' or 'query'. See cbehcache README for documentation on how to set the valueClass for your cache." );
 			}
 		}
 
@@ -294,6 +294,17 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 	}
 
 	private any function _class( required string className ) {
+		switch( arguments.className ) {
+			case "lucee.runtime.type.Struct":
+			case "struct":
+				return ( {} ).getClass();
+			case "lucee.runtime.type.Array":
+			case "array":
+				return ( [] ).getClass();
+			case "lucee.runtime.type.Query":
+			case "query":
+				return ( QueryNew('') ).getClass();
+		}
 		return _obj( arguments.className ).class;
 	}
 
