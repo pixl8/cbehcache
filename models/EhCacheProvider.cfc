@@ -116,8 +116,8 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 					throw( message );
 				}
 			} else {
-                rethrow;
-            }
+				rethrow;
+			}
 		}
 
 		setCache( cache );
@@ -342,9 +342,9 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 					var storage = _obj( "java.io.File" ).init( _getFileStorageDirectory() );
 					var builder = _obj( "org.ehcache.config.builders.CacheManagerBuilder" );
 					var manager = builder.newCacheManagerBuilder()
-					                .using( _getStatsService() )
-					                .with( builder.persistence( storage ) )
-					                .build();
+					                     .using( _getStatsService() )
+					                     .with( builder.persistence( storage ) )
+					                     .build();
 
 					manager.init();
 
