@@ -106,14 +106,14 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 				try {
 					cache = mngr.createCache( getName(), _getConfigForEhCache() );
 				} catch ( "java.lang.IllegalStateException" ee ) {
-					var message = serializeJSON( {
+					var detail = serializeJSON( {
 						  cacheName         = getName()
 						, configuration     = getConfiguration()
 						, managerStatus     = mngr.getStatus().toString()
 						, originalException = "java.lang.IllegalStateException"
 						, originalMessage   = ee.message
 					} );
-					throw( message );
+					throw( "An EHCache cache could not be registered.", "cbehcache.cache.registration", detail );
 				}
 			} else {
 				rethrow;
