@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.5
+
+* [#4](https://github.com/pixl8/cbehcache/issues/4) Add some debugging to illegalstate exceptions when registering caches
+
 ## v1.1.4
 
 * [#2](https://github.com/pixl8/cbehcache/issues/2) Allow the use of CFML struct, query and array types for the 'ValueClass' for non-heap storage.
