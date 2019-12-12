@@ -97,7 +97,28 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 
 	function registerCache() {
 		var mngr  = _getManager();
-		var cache = mngr.createCache( getName(), _getConfigForEhCache() );
+
+		try {
+			cache = mngr.createCache( getName(), _getConfigForEhCache() );
+		} catch ( "java.lang.IllegalStateException" e ) {
+			if ( e.message contains "UNINITIALIZED" ) {
+				mngr.init();
+				try {
+					cache = mngr.createCache( getName(), _getConfigForEhCache() );
+				} catch ( "java.lang.IllegalStateException" ee ) {
+					var detail = serializeJSON( {
+						  cacheName         = getName()
+						, configuration     = getConfiguration()
+						, managerStatus     = mngr.getStatus().toString()
+						, originalException = "java.lang.IllegalStateException"
+						, originalMessage   = ee.message
+					} );
+					throw( "An EHCache cache could not be registered.", "cbehcache.cache.registration", detail );
+				}
+			} else {
+				rethrow;
+			}
+		}
 
 		setCache( cache );
 	}
@@ -321,9 +342,9 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 					var storage = _obj( "java.io.File" ).init( _getFileStorageDirectory() );
 					var builder = _obj( "org.ehcache.config.builders.CacheManagerBuilder" );
 					var manager = builder.newCacheManagerBuilder()
-					                .using( _getStatsService() )
-					                .with( builder.persistence( storage ) )
-					                .build();
+					                     .using( _getStatsService() )
+					                     .with( builder.persistence( storage ) )
+					                     .build();
 
 					manager.init();
 
