@@ -97,7 +97,28 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 
 	function registerCache() {
 		var mngr  = _getManager();
-		var cache = mngr.createCache( getName(), _getConfigForEhCache() );
+
+		try {
+			cache = mngr.createCache( getName(), _getConfigForEhCache() );
+		} catch ( "java.lang.IllegalStateException" e ) {
+			if ( e.message contains "UNINITIALIZED" ) {
+				mngr.init();
+				try {
+					cache = mngr.createCache( getName(), _getConfigForEhCache() );
+				} catch ( "java.lang.IllegalStateException" ee ) {
+					var message = serializeJSON( {
+						  cacheName         = getName()
+						, configuration     = getConfiguration()
+						, managerStatus     = mngr.getStatus().toString()
+						, originalException = "java.lang.IllegalStateException"
+						, originalMessage   = ee.message
+					} );
+					throw( message );
+				}
+			} else {
+                rethrow;
+            }
+		}
 
 		setCache( cache );
 	}
