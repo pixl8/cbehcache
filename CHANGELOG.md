@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.6
+
+* [#6](https://github.com/pixl8/cbehcache/issues/6) Fix issue with cbehcache mapping not always being available for path resolution
+
 ## v1.1.5
 
 * [#4](https://github.com/pixl8/cbehcache/issues/4) Add some debugging to illegalstate exceptions when registering caches
