@@ -330,7 +330,7 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 	}
 
 	private array function _getLib() {
-		return DirectoryList( ExpandPath( "/cbehcache/lib" ), false, "path", "*.jar" );
+		return DirectoryList( ExpandPath( GetDirectoryFromPath(GetCurrentTemplatePath()) & "../lib" ), false, "path", "*.jar" );
 	}
 
 	private any function _getManager() {
