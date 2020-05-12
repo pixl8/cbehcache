@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.2.0
+
+* Update dependency on cbjgroups to add k8s support
+
 ## v1.1.6
 
 * [#6](https://github.com/pixl8/cbehcache/issues/6) Fix issue with cbehcache mapping not always being available for path resolution
