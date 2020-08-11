@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.2.1
+
+* Update cbjgroups dependency version
+
 ## v1.2.0
 
 * Update dependency on cbjgroups to add k8s support
