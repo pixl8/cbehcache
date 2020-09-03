@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.2.2
+
+* Adding working logic for cache.getKeys() method. Thanks to Florindo Lopez.
+
 ## v1.2.1
 
 * Update cbjgroups dependency version
