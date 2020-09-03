@@ -193,12 +193,11 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 
 	array function getKeys(){
 		var cacheKeys = [];
+		var iterator  = variables.cache.iterator();
 
-		var iterator = variables.cache.iterator();
-
-		while (iterator.hasNext()) {
-        cacheKeys.append(iterator.next().getKey());
-    }
+		while( iterator.hasNext() ) {
+			cacheKeys.append( iterator.next().getKey() );
+		}
 
 		return cacheKeys;
 	}
