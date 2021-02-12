@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.2.4
+
+* Remove debug output
+
 ## v1.2.3
 
 * Update to cbjgroups 0.2.3 to fix issue with limitation on size of cache objects that can be sent to other cluster nodes

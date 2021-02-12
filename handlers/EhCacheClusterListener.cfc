@@ -24,8 +24,6 @@ component {
 		if ( cachebox.cacheExists( arguments.cacheName ) ) {
 			var cache = cachebox.getCache( arguments.cacheName );
 
-			systemoutput( "clearall :)" )
-
 			cache.clearall( propagate=false );
 		}
 	}
