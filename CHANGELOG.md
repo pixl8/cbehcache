@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.2.6
+
+* Upgrade to cbjgroups 0.3.0
+
 ## v1.2.5
 
 * Upgrade to cbjgroups 0.2.4 to fix issue with 0.2.3
