@@ -44,6 +44,7 @@ caches.mycache = {
 		, clusterName                    = "cbehcache"
 		, propagateDeletes               = true
 		, propagatePuts                  = false
+		, lowerCaseKeys                  = false
 	}
 }
 ```

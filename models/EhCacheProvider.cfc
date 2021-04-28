@@ -25,6 +25,7 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 		, clusterName                    = "cbehcache"
 		, propagateDeletes               = true
 		, propagatePuts                  = false
+		, lowerCaseKeys                  = false
 	};
 
 
@@ -140,6 +141,7 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 
 // CORE CACHE METHODS
 	function get( required objectKey ){
+		arguments.objectKey = _fixObjectKeyCase( arguments.objectKey );
 		try {
 			return variables.cache.get( arguments.objectKey );
 		} catch( "java.lang.IllegalStateException" e ) {
@@ -154,6 +156,7 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 		,          any    lastAccessTimeout = 0  // ignored
 		,          struct extra             = {} // ignored
 	){
+		arguments.objectKey = _fixObjectKeyCase( arguments.objectKey );
 		try {
 			variables.cache.put( arguments.objectKey, arguments.object );
 			if ( variables.configuration.propagatePuts && _isTrue( arguments.propagate ?: true ) ) {
@@ -175,6 +178,7 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 		,          any lastAccessTimeout = 0
 		,          any extra             = {}
 	){
+		arguments.objectKey = _fixObjectKeyCase( arguments.objectKey );
 		var value = get( arguments.objectKey );
 
 		if ( IsNull( local.value ) ) {
@@ -203,6 +207,7 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 	}
 
 	boolean function lookup( required objectKey ){
+		arguments.objectKey = _fixObjectKeyCase( arguments.objectKey );
 		try {
 			return variables.cache.containsKey( arguments.objectKey );
 		} catch( "java.lang.IllegalStateException" e ) {
@@ -223,9 +228,8 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 		return this;
 	}
 
-	boolean function clear(
-		  required any objectKey
-	){
+	boolean function clear( required any objectKey ){
+		arguments.objectKey = _fixObjectKeyCase( arguments.objectKey );
 		try {
 			variables.cache.remove( arguments.objectKey );
 			if ( variables.configuration.propagateDeletes && _isTrue( arguments.propagate ?: true ) ) {
@@ -319,6 +323,13 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 // UTILITIES
 	private any function _obj( required string className ) {
 		return CreateObject( "java", arguments.className, _getLib() )
+	}
+
+	private string function _fixObjectKeyCase( required string objectKey ) {
+		if ( variables.configuration.lowerCaseKeys ) {
+			return LCase( arguments.objectKey );
+		}
+		return arguments.objectKey;
 	}
 
 	private any function _class( required string className ) {
