@@ -59,7 +59,7 @@ _**Note:** Nonheap is a special memory based cache that does not require GC so c
 
 #### Timeouts
 
-The cache can use **either** time to live (TTL) **or** time to idle (TTI) timeouts. These modes correspond to `objectDefaultTimeout` (TTL) and `objectDefaultLastAccessTimeout` (TTI). To use TTI, ensure that `useLastAccessTimeouts` is set to `true`. 
+The cache can use **either** time to live (TTL) **or** time to idle (TTI) timeouts. These modes correspond to `objectDefaultTimeout` (TTL) and `objectDefaultLastAccessTimeout` (TTI). To use TTI, ensure that `useLastAccessTimeouts` is set to `true`.
 
 Set a value of `0` to have no timeouts.
 
@@ -67,7 +67,7 @@ _**Note:** The semantics here have been chosen to keep as close to the default C
 
 #### Resource limits
 
-The `maxObjects` and `maxSizeInMb` properties define the resource limits for your cache. For `heap` storage, you can define **either** one (not both). A value of `zero` will mean no limit. 
+The `maxObjects` and `maxSizeInMb` properties define the resource limits for your cache. For `heap` storage, you can define **either** one (not both). A value of `zero` will mean no limit.
 
 For `nonheap` and `disk` storage, only `maxSizeInMb` is possible.
 
@@ -75,11 +75,13 @@ For `nonheap` and `disk` storage, only `maxSizeInMb` is possible.
 
 For serialization of caches (`nonheap` and `disk` storages), the cache requires that you define the class used for both keys and values in the cache. If you know that you will always be storing _strings_ in the cache, set the `valueClass` to `java.lang.String`. For CFML types, you can use `struct`, `array` or `query` for the corresponding types.
 
+The `lowerCaseKeys` property allows you to force all cache object keys to lower case.
+
 #### Clustering
 
 The minimal configuration required is to set `clustering=true` to enable clustering. This will:
 
-* propagate cache deletes across the system 
+* propagate cache deletes across the system
 * setup a cluster named `cbehcache` with the default `jgroups` cluster settings of automatically detecting peers using UDP multicast discovery
 
 See the [cbjgroups](https://github.com/pixl8/cbjgroups) project documentation for full cluster configuration details. You can either configure a `cbehcache` cluster, or provide your own cluster IDs with their own configuration.
