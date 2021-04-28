@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.2.7
+
+* Add config option to allow all object keys to be forced to lower-case
+
 ## v1.2.6
 
 * Upgrade to cbjgroups 0.3.0
