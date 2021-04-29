@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.2.8
+
+* Upgrade cbjgroups with fix for running cfml in app context on cluster membership change events
+
 ## v1.2.7
 
 * Add config option to allow all object keys to be forced to lower-case
