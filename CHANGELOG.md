@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.2.9
+
+* Upgrade cbjgroups with fix for memory leak in kubernetes
+
 ## v1.2.8
 
 * Upgrade cbjgroups with fix for running cfml in app context on cluster membership change events
