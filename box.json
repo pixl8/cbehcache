@@ -1,8 +1,8 @@
 {
     "name":"EHCache Provider for Cachebox",
     "author":"Pixl8 Group",
-    "version":"VERSION_NUMBER",
-    "location":"https://s3.eu-west-2.amazonaws.com/pixl8-public-packages/cbehcache/DOWNLOAD_LOCATION",
+    "version":"$VERSION_NUMBER",
+    "location":"$DOWNLOAD_URL",
     "slug":"cbehcache",
     "type":"modules",
     "homepage":"https://github.com/pixl8/cbehcache",

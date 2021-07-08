@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.2.10
+
+Migrate to github actions
+
 ## v1.2.9
 
 * Upgrade cbjgroups with fix for memory leak in kubernetes
