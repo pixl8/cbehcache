@@ -389,7 +389,13 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 	}
 
 	private string function _getFileStorageDirectory() {
+		var cfmlConfig    = getConfiguration();
+
 		var dir = getTempDirectory() & "/ehcache/" & _getAppName();
+
+		if(Len(Trim(cfmlConfig.directoryPath ?: "")) > 0){
+			dir = cfmlConfig.directoryPath;
+		}
 
 		DirectoryCreate( dir, true, true );
 
