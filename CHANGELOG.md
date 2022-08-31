@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.2.11
+
+* Fix [#11](https://github.com/pixl8/cbehcache/issues/11) - issue with cache creation race conditions throwing errors
+
 ## v1.2.10
 
 Migrate to github actions
