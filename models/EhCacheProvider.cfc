@@ -101,7 +101,8 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 
 		try {
 			cache = mngr.createCache( getName(), _getConfigForEhCache() );
-		} catch ( "java.lang.IllegalStateException" e ) {
+		}
+		catch ( "java.lang.IllegalStateException" e ) {
 			if ( e.message contains "UNINITIALIZED" ) {
 				mngr.init();
 				try {
@@ -116,7 +117,12 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 					} );
 					throw( "An EHCache cache could not be registered.", "cbehcache.cache.registration", detail );
 				}
-			} else if ( e.message contains "already exists" ) {
+			} else {
+				rethrow;
+			}
+		}
+		catch ( "java.lang.IllegalArgumentException" e ) {
+			if ( e.message contains "already exists" ) {
 				return;
 			} else {
 				rethrow;
