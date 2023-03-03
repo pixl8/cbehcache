@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.2.12
+
+* Fix [#13](https://github.com/pixl8/cbehcache/issues/13) - Catch correct exception for already existing cache under race conditions
+
 ## v1.2.11
 
 * Fix [#11](https://github.com/pixl8/cbehcache/issues/11) - issue with cache creation race conditions throwing errors
