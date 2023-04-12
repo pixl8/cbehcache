@@ -57,7 +57,7 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 				if ( StructKeyExists( application, "ehCacheManager" ) ) {
 					try {
 						application.ehCacheManager.close();
-					} catch( "java.lang.IllegalStateException" e ) {}
+					} catch( any e ) {}
 
 					application.delete( "ehCacheManager" );
 				}
@@ -102,17 +102,17 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 		try {
 			cache = mngr.createCache( getName(), _getConfigForEhCache() );
 		}
-		catch ( "java.lang.IllegalStateException" e ) {
+		catch ( any e ) {
 			if ( e.message contains "UNINITIALIZED" ) {
 				mngr.init();
 				try {
 					cache = mngr.createCache( getName(), _getConfigForEhCache() );
-				} catch ( "java.lang.IllegalStateException" ee ) {
+				} catch ( any ee ) {
 					var detail = serializeJSON( {
 						  cacheName         = getName()
 						, configuration     = getConfiguration()
 						, managerStatus     = mngr.getStatus().toString()
-						, originalException = "java.lang.IllegalStateException"
+						, originalException = ee.type ?: ""
 						, originalMessage   = ee.message
 					} );
 					throw( "An EHCache cache could not be registered.", "cbehcache.cache.registration", detail );
@@ -121,7 +121,7 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 				rethrow;
 			}
 		}
-		catch ( "java.lang.IllegalArgumentException" e ) {
+		catch ( any e ) {
 			if ( e.message contains "already exists" ) {
 				return;
 			} else {
@@ -152,7 +152,7 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 		arguments.objectKey = _fixObjectKeyCase( arguments.objectKey );
 		try {
 			return variables.cache.get( arguments.objectKey );
-		} catch( "java.lang.IllegalStateException" e ) {
+		} catch( any e ) {
 			// cache unavailable, probably due to shutdown
 		}
 	}
@@ -173,7 +173,7 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 					, object    = arguments.object
 				} );
 			}
-		} catch( "java.lang.IllegalStateException" e ) {
+		} catch( any e ) {
 			// cache unavailable, probably due to shutdown
 		}
 		return this;
@@ -218,7 +218,7 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 		arguments.objectKey = _fixObjectKeyCase( arguments.objectKey );
 		try {
 			return variables.cache.containsKey( arguments.objectKey );
-		} catch( "java.lang.IllegalStateException" e ) {
+		} catch( any e ) {
 			// cache unavailable, probably due to shutdown
 		}
 	}
@@ -230,7 +230,7 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 			if ( variables.configuration.propagateDeletes && _isTrue( arguments.propagate ?: true ) ) {
 				_runClusterEvent( "clearall" );
 			}
-		} catch( "java.lang.IllegalStateException" e ) {
+		} catch( any e ) {
 			// cache unavailable, probably due to shutdown
 		}
 		return this;
@@ -243,7 +243,7 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 			if ( variables.configuration.propagateDeletes && _isTrue( arguments.propagate ?: true ) ) {
 				_runClusterEvent( "clear", { objectKey=arguments.objectKey } );
 			}
-		} catch( "java.lang.IllegalStateException" e ) {
+		} catch( any e ) {
 			// cache unavailable, probably due to shutdown
 		}
 		return true;
@@ -507,7 +507,7 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 		for( var i=ArrayLen( managers ); i>0; i-- ) {
 			try {
 				managers[ i ].close();
-			} catch( "java.lang.IllegalStateException" e ) {
+			} catch( any e ) {
 				// ignore, already closed
 			}
 

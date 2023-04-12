@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.2.13
+
+* Fix [#14](https://github.com/pixl8/cbehcache/issues/14) - More liberal error catching to make more robust cache system
+
 ## v1.2.12
 
 * Fix [#13](https://github.com/pixl8/cbehcache/issues/13) - Catch correct exception for already existing cache under race conditions
