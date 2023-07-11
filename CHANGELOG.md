@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.2.14
+
+* Update dependency on cbjgroups with latest hotfix
+
 ## v1.2.13
 
 * Fix [#14](https://github.com/pixl8/cbehcache/issues/14) - More liberal error catching to make more robust cache system
