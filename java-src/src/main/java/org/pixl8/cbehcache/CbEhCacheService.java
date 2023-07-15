@@ -38,6 +38,14 @@ public class CbEhCacheService {
 		_manager.close();
 	}
 
+	public void init() {
+		_manager.init();
+	}
+
+	public String getStatus() {
+		return _manager.getStatus().toString();
+	}
+
 	public Cache createCache( String name, Struct cfmlConfig ) throws PageException, ClassNotFoundException {
 		return _manager.createCache( name, _buildConfig( cfmlConfig ) );
 	}

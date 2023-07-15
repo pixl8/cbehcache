@@ -59,7 +59,7 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 						application.ehCacheManager.close();
 					} catch( any e ) {}
 
-					application.delete( "ehCacheManager" );
+					StructDelete( application, "ehCacheManager" );
 				}
 			}
 		}
@@ -100,30 +100,24 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 		var mngr  = _getManager();
 
 		try {
-			cache = mngr.createCache( getName(), _getConfigForEhCache() );
-		}
-		catch ( any e ) {
-			if ( e.message contains "UNINITIALIZED" ) {
+			cache = mngr.createCache( getName(), getConfiguration() );
+		} catch ( any e ) {
+			if ( e.message contains "already exists" ) {
+				return;
+			} else if ( e.message contains "UNINITIALIZED" ) {
 				mngr.init();
 				try {
-					cache = mngr.createCache( getName(), _getConfigForEhCache() );
+					cache = mngr.createCache( getName(), getConfiguration() );
 				} catch ( any ee ) {
 					var detail = serializeJSON( {
 						  cacheName         = getName()
 						, configuration     = getConfiguration()
-						, managerStatus     = mngr.getStatus().toString()
+						, managerStatus     = mngr.getStatus()
 						, originalException = ee.type ?: ""
 						, originalMessage   = ee.message
 					} );
 					throw( "An EHCache cache could not be registered.", "cbehcache.cache.registration", detail );
 				}
-			} else {
-				rethrow;
-			}
-		}
-		catch ( any e ) {
-			if ( e.message contains "already exists" ) {
-				return;
 			} else {
 				rethrow;
 			}
@@ -329,8 +323,30 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 	}
 
 // UTILITIES
-	private any function _obj( required string className ) {
-		return CreateObject( "java", arguments.className, _getLib() )
+	private function _registerOsgiBundle() {
+		if ( !StructKeyExists( request, "_cbehcacheBundleRegistered" ) ) {
+			var cfmlEngine = CreateObject( "java", "lucee.loader.engine.CFMLEngineFactory" ).getInstance();
+			var osgiUtil   = CreateObject( "java", "lucee.runtime.osgi.OSGiUtil" );
+			var lib        = ExpandPath( GetDirectoryFromPath(GetCurrentTemplatePath()) & "../lib/cbehcache-1.0.0.jar" );
+			var resource   = cfmlEngine.getResourceUtil().toResourceExisting( getPageContext(), lib );
+
+			osgiUtil.installBundle( cfmlEngine.getBundleContext(), resource, true );
+
+			request._cbehcacheBundleRegistered = true;
+		}
+	}
+
+	private any function _getManager() {
+		if ( !StructKeyExists( application, "ehCacheManager" ) ) {
+			lock type="exclusive" name="ehCacheManagerLoad" timeout=5 {
+				_registerOsgiBundle();
+				if ( !StructKeyExists( application, "ehCacheManager" ) ) {
+					application.ehCacheManager = CreateObject( "java", "org.pixl8.cbehcache.CbEhCacheService", "org.pixl8.cbehcache" ).init( _getFileStorageDirectory() );
+				}
+			}
+		}
+
+		return application.ehCacheManager;
 	}
 
 	private string function _fixObjectKeyCase( required string objectKey ) {
@@ -340,137 +356,12 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 		return arguments.objectKey;
 	}
 
-	private any function _class( required string className ) {
-		switch( arguments.className ) {
-			case "lucee.runtime.type.Struct":
-			case "struct":
-				return ( {} ).getClass();
-			case "lucee.runtime.type.Array":
-			case "array":
-				return ( [] ).getClass();
-			case "lucee.runtime.type.Query":
-			case "query":
-				return ( QueryNew('') ).getClass();
-		}
-		return _obj( arguments.className ).class;
-	}
-
-	private array function _getLib() {
-		return DirectoryList( ExpandPath( GetDirectoryFromPath(GetCurrentTemplatePath()) & "../lib" ), false, "path", "*.jar" );
-	}
-
-	private any function _getManager() {
-		if ( !StructKeyExists( application, "ehCacheManager" ) ) {
-			lock type="exclusive" name="ehCacheManagerLoad" timeout=5 {
-				if ( !StructKeyExists( application, "ehCacheManager" ) ) {
-					_closeAbandonedManagers(); // there can be only one
-
-					var storage = _obj( "java.io.File" ).init( _getFileStorageDirectory() );
-					var builder = _obj( "org.ehcache.config.builders.CacheManagerBuilder" );
-					var manager = builder.newCacheManagerBuilder()
-					                     .using( _getStatsService() )
-					                     .with( builder.persistence( storage ) )
-					                     .build();
-
-					manager.init();
-
-					_storeManagerInServerScopeToAvoidBadShutdownIssues( manager );
-
-					application.ehCacheManager = manager;
-				}
-			}
-		}
-
-		return application.ehCacheManager;
-	}
-
-	private any function _getStatsService() {
-		if ( !StructKeyExists( application, "ehCacheStatsService" ) ) {
-			lock type="exclusive" name="ehCacheStatsServiceLoad" timeout=5 {
-				if ( !StructKeyExists( application, "ehCacheStatsService" ) ) {
-					application.ehCacheStatsService = _obj( "org.ehcache.impl.internal.statistics.DefaultStatisticsService" );
-				}
-			}
-		}
-
-		return application.ehCacheStatsService;
-	}
-
 	private string function _getFileStorageDirectory() {
 		var dir = getTempDirectory() & "/ehcache/" & _getAppName();
 
 		DirectoryCreate( dir, true, true );
 
 		return dir;
-	}
-
-	private any function _getConfigForEhCache() {
-		var cfmlConfig    = getConfiguration();
-		var keyClass      = _class( cfmlConfig.keyClass );
-		var valueClass    = _class( cfmlConfig.valueClass );
-
-		return _getConfigBuilder( keyClass, valueClass, _getResourcePoolConfig() )
-		       .withExpiry( _getExpiryPolicyConfig() )
-		       .build();
-	}
-
-	private any function _getConfigBuilder( keyClass, valueClass, resourcePool ) {
-		return _obj( "org.ehcache.config.builders.CacheConfigurationBuilder" ).newCacheConfigurationBuilder( keyClass, valueClass, resourcePool );
-	}
-
-	private any function _getResourcePoolBuilder() {
-		return _obj( "org.ehcache.config.builders.ResourcePoolsBuilder" );
-	}
-
-	private any function _getExpiryPolicyBuilder() {
-		return _obj( "org.ehcache.config.builders.ExpiryPolicyBuilder" );
-	}
-
-	private any function _getResourcePoolConfig() {
-		var cfmlConfig = getConfiguration();
-
-		switch( cfmlConfig.storage ) {
-			case "offheap":
-				return _configureOffHeapStorage( cfmlConfig.maxSizeInMb );
-
-			case "disk":
-				return _configureDiskStorage( cfmlConfig.maxSizeInMb, cfmlConfig.persistent );
-		}
-
-		// heap default
-		return _configureHeapStorage( cfmlConfig.maxObjects, cfmlConfig.maxSizeInMb );
-	}
-
-	private any function _configureHeapStorage( maxObjects, maxSizeInMb ) {
-		if ( arguments.maxObjects ) {
-			return _getResourcePoolBuilder().heap( JavaCast( "long", arguments.maxObjects ) ).build();
-		}
-
-		return _getResourcePoolBuilder().heap( JavaCast( "long", arguments.maxSizeInMb ), _obj( "org.ehcache.config.units.MemoryUnit" ).MB ).build();
-	}
-
-	private any function _configureOffHeapStorage( maxSizeInMb ) {
-		return _getResourcePoolBuilder().offheap( JavaCast( "long", arguments.maxSizeInMb ), _obj( "org.ehcache.config.units.MemoryUnit" ).MB ).build();
-	}
-
-	private any function _configureDiskStorage( maxSizeInMb, persistent ) {
-		return _getResourcePoolBuilder().newResourcePoolsBuilder().disk( JavaCast( "long", arguments.maxSizeInMb ), _obj( "org.ehcache.config.units.MemoryUnit" ).MB, arguments.persistent ).build();
-	}
-
-	private any function _getExpiryPolicyConfig() {
-		var cfmlConfig = getConfiguration();
-
-		if ( !cfmlConfig.objectDefaultLastAccessTimeout + cfmlConfig.objectDefaultTimeout ) {
-			return _getExpiryPolicyBuilder().noExpiration();
-		}
-
-		if ( cfmlConfig.useLastAccessTimeouts ) {
-			var timeout = cfmlConfig.objectDefaultLastAccessTimeout ? cfmlConfig.objectDefaultLastAccessTimeout : cfmlConfig.objectDefaultTimeout;
-
-			return _getExpiryPolicyBuilder().timeToIdleExpiration( _obj( "java.time.Duration" ).ofMinutes( cfmlConfig.objectDefaultTimeout ) );
-		}
-
-		return _getExpiryPolicyBuilder().timeToLiveExpiration( _obj( "java.time.Duration" ).ofMinutes( cfmlConfig.objectDefaultTimeout ) );
 	}
 
 	private boolean function _isTrue( required any value ) {
@@ -490,28 +381,5 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 		var appMeta = getApplicationMetadata();
 
 		return appMeta.name ?: Hash( ExpandPath( "/" ) );
-	}
-
-	private void function _storeManagerInServerScopeToAvoidBadShutdownIssues( required any manager ) {
-		var appName = _getAppName();
-		server.ehCacheManagers = server.ehCacheManagers ?: {};
-		server.ehCacheManagers[ appName ] = server.ehCacheManagers[ appName ] ?: [];
-
-		ArrayAppend( server.ehCacheManagers[ appName ], arguments.manager );
-	}
-
-	private void function _closeAbandonedManagers() {
-		var appName  = _getAppName();
-		var managers = server.ehCacheManagers[ appName ] ?: [];
-
-		for( var i=ArrayLen( managers ); i>0; i-- ) {
-			try {
-				managers[ i ].close();
-			} catch( any e ) {
-				// ignore, already closed
-			}
-
-			ArrayDeleteAt( managers, i );
-		}
 	}
 }
