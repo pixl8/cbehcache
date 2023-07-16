@@ -245,7 +245,7 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 
 // HOUSE KEEPING
 	function getStats(){
-		return new cbehcache.models.EhCacheStats( _getStatsService().getCacheStatistics( getName() ) );
+		return new cbehcache.models.EhCacheStats( _getManager().getStats( getName() ) );
 	}
 	function clearStatistics(){
 		getStats().clearStatistics();

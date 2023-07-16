@@ -15,18 +15,21 @@ import org.ehcache.config.ResourcePools;
 import org.ehcache.expiry.ExpiryPolicy;
 import org.ehcache.impl.internal.statistics.DefaultStatisticsService;
 import org.ehcache.config.units.MemoryUnit;
+import org.ehcache.core.statistics.CacheStatistics;
 
 import lucee.runtime.type.Struct;
 import lucee.runtime.exp.PageException;
 
 public class CbEhCacheService {
 
-	private EhcacheManager _manager;
+	private EhcacheManager           _manager;
+	private DefaultStatisticsService _statsService;
 
 // CONSTRUCTOR
 	public CbEhCacheService( String storageDirectory ) {
+		_statsService = new DefaultStatisticsService();
 		_manager = (EhcacheManager)CacheManagerBuilder.newCacheManagerBuilder()
-		                                              .using( new DefaultStatisticsService() )
+		                                              .using( _statsService )
 		                                              .with( CacheManagerBuilder.persistence( new File( storageDirectory ) ) )
 		                                              .build();
 
@@ -49,6 +52,11 @@ public class CbEhCacheService {
 	public Cache createCache( String name, Struct cfmlConfig ) throws PageException, ClassNotFoundException {
 		return _manager.createCache( name, _buildConfig( cfmlConfig ) );
 	}
+
+	public CacheStatistics getStats( String name ) {
+		return _statsService.getCacheStatistics( name );
+	}
+
 
 // Helpers
 	private CacheConfiguration _buildConfig( Struct cfmlConfig ) throws PageException, ClassNotFoundException {
