@@ -1,5 +1,9 @@
 # Changelog
 
+## v2.0.0
+
+* Rewrite of java layer. Using a java proxy service and building our own OSGi bundle. This reduces/eliminates class loader issues and makes for more efficient CFML.
+
 ## v1.2.14
 
 * Update dependency on cbjgroups with latest hotfix
