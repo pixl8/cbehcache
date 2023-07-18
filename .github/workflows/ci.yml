@@ -12,7 +12,7 @@ jobs:
           branch=${GITHUB_REF##*/}
           publish=false
           if [[ "{{ env.event.name }}" != "pull_request" ]] ; then
-            if [[ $branch == v* ]] ; then
+            if [[ $branch == release-* ]] || [[ $branch == v* ]] ; then
               publish=true
             fi
           fi
@@ -22,6 +22,23 @@ jobs:
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
+
+      - name: Build jars
+        run: cd java-src && mvn package
+
+      - name: Convert to bundle
+        run: |
+          cd java-src/artifacts && \
+          unzip cbehcache-1.0.0.jar && \
+          echo "Manifest-Version: 1.0
+          Bundle-ManifestVersion: 2
+          Bundle-Name: CBEHCache Java Service
+          Bundle-SymbolicName: org.pixl8.cbehcache
+          Bundle-Version: 1.0.0
+          " > META-INF/MANIFEST.MF && \
+          rm cbehcache-1.0.0.jar && \
+          zip -rq cbehcache-1.0.0.jar * && \
+          cp cbehcache-1.0.0.jar ../../lib/
 
       - name: Generate release version number
         if: "env.PUBLISH == 'true'"
@@ -52,7 +69,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref }}
+          tag_name: ${{ steps.versiongen.outputs.semver_release_string }}
           release_name: Release ${{ steps.versiongen.outputs.semver_release_string }}
           draft: false
           prerelease: ${{ steps.versiongen.outputs.semver_release_is_snapshot }}

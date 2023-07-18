@@ -20,7 +20,7 @@
         "build"
     ],
     "dependencies":{
-        "cbjgroups":"0.3.3"
+        "cbjgroups":"1.0.0"
     },
     "installPaths":{
         "cbjgroups":"modules/cbjgroups/"
