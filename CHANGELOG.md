@@ -1,5 +1,9 @@
 # Changelog
 
+## v2.0.1
+
+* Reinstate logic to defend against bad application restarts that leave "abandoned" cache managers that block startup (effects local development only for the most part)
+
 ## v2.0.0
 
 * Rewrite of java layer. Using a java proxy service and building our own OSGi bundle. This reduces/eliminates class loader issues and makes for more efficient CFML.
