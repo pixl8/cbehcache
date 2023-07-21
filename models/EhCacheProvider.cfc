@@ -339,9 +339,13 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 	private any function _getManager() {
 		if ( !StructKeyExists( application, "ehCacheManager" ) ) {
 			lock type="exclusive" name="ehCacheManagerLoad" timeout=5 {
-				_registerOsgiBundle();
 				if ( !StructKeyExists( application, "ehCacheManager" ) ) {
+					_registerOsgiBundle();
+					_closeAbandonedManagers(); // there can be only one
+
 					application.ehCacheManager = CreateObject( "java", "org.pixl8.cbehcache.CbEhCacheService", "org.pixl8.cbehcache" ).init( _getFileStorageDirectory() );
+
+					_storeManagerInServerScopeToAvoidBadShutdownIssues( application.ehCacheManager );
 				}
 			}
 		}
@@ -381,5 +385,28 @@ component extends="coldbox.system.cache.AbstractCacheBoxProvider" implements="co
 		var appMeta = getApplicationMetadata();
 
 		return appMeta.name ?: Hash( ExpandPath( "/" ) );
+	}
+
+	private void function _storeManagerInServerScopeToAvoidBadShutdownIssues( required any manager ) {
+		var appName = _getAppName();
+		server.ehCacheManagers = server.ehCacheManagers ?: {};
+		server.ehCacheManagers[ appName ] = server.ehCacheManagers[ appName ] ?: [];
+
+		ArrayAppend( server.ehCacheManagers[ appName ], arguments.manager );
+	}
+
+	private void function _closeAbandonedManagers() {
+		var appName  = _getAppName();
+		var managers = server.ehCacheManagers[ appName ] ?: [];
+
+		for( var i=ArrayLen( managers ); i>0; i-- ) {
+			try {
+				managers[ i ].close();
+			} catch( any e ) {
+				// ignore, already closed
+			}
+
+			ArrayDeleteAt( managers, i );
+		}
 	}
 }
