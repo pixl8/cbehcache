@@ -28,6 +28,7 @@ jobs:
 
       - name: Convert to bundle
         run: |
+          mkdir -p java-src/artifacts
           cp java-src/target/cbehcache-1.0.0-jar-with-dependencies.jar java-src/artifacts/cbehcache-1.0.0.jar
           cd java-src/artifacts && \
           unzip cbehcache-1.0.0.jar && \
