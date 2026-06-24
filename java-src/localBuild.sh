@@ -1,7 +1,9 @@
 #!/bin/bash
 
-rm -rf artifacts/*
+rm -rf artifacts
+mkdir -p artifacts
 mvn package || exit 1
+cp target/cbehcache-1.0.0-jar-with-dependencies.jar artifacts/cbehcache-1.0.0.jar
 cd artifacts
 unzip cbehcache-1.0.0.jar
 echo "Manifest-Version: 1.0
